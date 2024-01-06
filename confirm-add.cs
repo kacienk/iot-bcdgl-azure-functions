@@ -11,6 +11,7 @@ using Microsoft.Azure.Devices;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
+using Iotbcdg.Model;
 
 namespace Iotbcdg.Functions
 {
@@ -68,46 +69,27 @@ namespace Iotbcdg.Functions
             string cosmosConnection = Environment.GetEnvironmentVariable("CosmosConnection", EnvironmentVariableTarget.Process);
             string databaseId = Environment.GetEnvironmentVariable("DatabaseID", EnvironmentVariableTarget.Process);
             string containerId = Environment.GetEnvironmentVariable("UserContainerID", EnvironmentVariableTarget.Process);
-            using (var cosmosClient = new CosmosClient(cosmosConnection))
+            using var cosmosClient = new CosmosClient(cosmosConnection);
+            var database = cosmosClient.GetDatabase(databaseId);
+            var container = database.GetContainer(containerId);
+
+            dynamic user = await AppUser.GetUserByIdAsync(container, userId);
+
+            if (user != null)
             {
-                var database = cosmosClient.GetDatabase(databaseId);
-                var container = database.GetContainer(containerId);
+                log.LogInformation($"User with ID '{userId}' found in Cosmos DB.");
+                log.LogInformation($"Adding device '{deviceId}' to user's devices.");
 
-                dynamic user = await GetUserByIdAsync(container, userId);
-
-                if (user != null)
-                {
-                    log.LogInformation($"User with ID '{userId}' found in Cosmos DB.");
-                    log.LogInformation($"Adding device '{deviceId}' to user's devices.");
-
-                    user.Devices.Add(deviceId);
-                    await UpdateUserAsync(log, container, user);
-                    log.LogInformation("Device added successfully.");
-                    return true;
-                }
-                else
-                {
-                    log.LogInformation($"User with ID '{userId}' not found in Cosmos DB.");
-                    return false;
-                }
+                user.Devices.Add(deviceId);
+                await AppUser.UpdateUserAsync(container, user, log);
+                log.LogInformation("Device added successfully.");
+                return true;
             }
-        }
-
-        static async Task<User> GetUserByIdAsync(Container container, string userId)
-        {
-            var query = new QueryDefinition($"SELECT * FROM c WHERE c.id = @userId")
-                .WithParameter("@userId", userId);
-
-            var iterator = container.GetItemQueryIterator<User>(query);
-            var user = await iterator.ReadNextAsync();
-
-            return user.FirstOrDefault();
-        }
-
-        static async Task UpdateUserAsync(ILogger log, Container container, User user)
-        {
-            var response = await container.UpsertItemAsync(user, new PartitionKey(user.Id));
-            log.LogInformation($"Update status: {response.StatusCode}");
+            else
+            {
+                log.LogInformation($"User with ID '{userId}' not found in Cosmos DB.");
+                return false;
+            }
         }
     }
 }
