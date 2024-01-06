@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "iot_bcdgl_functions": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7064",
+      "launchBrowser": false
+    }
+  }
+}
