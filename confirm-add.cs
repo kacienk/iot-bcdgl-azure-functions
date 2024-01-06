@@ -9,8 +9,10 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Devices;
 using Microsoft.Azure.Cosmos;
+using System.Linq;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 
-namespace Iotbcdg.Funcions
+namespace Iotbcdg.Functions
 {
     public static class confirm_add
     {
@@ -21,16 +23,22 @@ namespace Iotbcdg.Funcions
         {
             log.LogInformation("Confirm add HTTP trigger function processed a request.");
 
-            string connectionString = Environment.GetEnvironmentVariable("IoTHubConnection", EnvironmentVariableTarget.Process);
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             dynamic data = JsonConvert.DeserializeObject(requestBody);
-            bool foundDevice = await CheckDeviceExistsAsync(connectionString, data);
+            bool foundDevice = await CheckDeviceExistsAsync(log, data);
+            bool foundUser = await VerifyUserAndAddDeviceAsync(log, data.userId, data.id);
 
-            return new OkObjectResult(responseMessage);
+            if (foundDevice && foundUser)
+                return new OkObjectResult(new { body = "success" });
+
+            return foundUser
+                ? new UnauthorizedObjectResult(new { body = "user not found" })
+                : new NotFoundObjectResult(new { body = "device not found" });
         }
 
-        static async Task<bool> CheckDeviceExistsAsync(ILogger log, string connectionString, dynamic deviceData)
+        static async Task<bool> CheckDeviceExistsAsync(ILogger log, dynamic deviceData)
         {
+            string connectionString = Environment.GetEnvironmentVariable("IoTHubConnection", EnvironmentVariableTarget.Process);
             var registryManager = RegistryManager.CreateFromConnectionString(connectionString);
 
             try
@@ -50,17 +58,12 @@ namespace Iotbcdg.Funcions
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error checking device existence: {ex.Message}");
+                log.LogInformation($"Error checking device existence: {ex.Message}");
                 return false;
             }
         }
 
-        static void AddDeviceToUserInCosmosDB()
-        {
-
-        }
-
-        static async Task VerifyUserAndAddDeviceAsync(string userId, string deviceId)
+        static async Task<bool> VerifyUserAndAddDeviceAsync(ILogger log, string userId, string deviceId)
         {
             string cosmosConnection = Environment.GetEnvironmentVariable("CosmosConnection", EnvironmentVariableTarget.Process);
             string databaseId = Environment.GetEnvironmentVariable("DatabaseID", EnvironmentVariableTarget.Process);
@@ -74,20 +77,18 @@ namespace Iotbcdg.Funcions
 
                 if (user != null)
                 {
-                    Console.WriteLine($"User with ID '{userId}' found in Cosmos DB.");
-                    Console.WriteLine($"Adding device '{deviceId}' to user's devices.");
+                    log.LogInformation($"User with ID '{userId}' found in Cosmos DB.");
+                    log.LogInformation($"Adding device '{deviceId}' to user's devices.");
 
-                    // Add the device to the devices array
                     user.Devices.Add(deviceId);
-
-                    // Update the user document in Cosmos DB
-                    await UpdateUserAsync(container, user);
-
-                    Console.WriteLine("Device added successfully.");
+                    await UpdateUserAsync(log, container, user);
+                    log.LogInformation("Device added successfully.");
+                    return true;
                 }
                 else
                 {
-                    Console.WriteLine($"User with ID '{userId}' not found in Cosmos DB.");
+                    log.LogInformation($"User with ID '{userId}' not found in Cosmos DB.");
+                    return false;
                 }
             }
         }
@@ -103,10 +104,10 @@ namespace Iotbcdg.Funcions
             return user.FirstOrDefault();
         }
 
-        static async Task UpdateUserAsync(Container container, User user)
+        static async Task UpdateUserAsync(ILogger log, Container container, User user)
         {
             var response = await container.UpsertItemAsync(user, new PartitionKey(user.Id));
-            Console.WriteLine($"Update status: {response.StatusCode}");
+            log.LogInformation($"Update status: {response.StatusCode}");
         }
     }
 }

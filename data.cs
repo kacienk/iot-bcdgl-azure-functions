@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
-namespace Iotbcdg.Funcions
+namespace Iotbcdg.Functions
 {
     public static class data
     {

@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Cryptography;
 
-namespace Iotbcdg.Funcions
+namespace Iotbcdg.Functions
 {
     public static class add_device
     {
