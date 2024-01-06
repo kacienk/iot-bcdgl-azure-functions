@@ -1,35 +1,79 @@
 using System;
 using System.IO;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Microsoft.Azure.Devices;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Cryptography;
 
 namespace Iotbcdg.Funcions
 {
     public static class add_device
     {
-        [FunctionName("add_device")]
+        [FunctionName("add-device")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
-            ILogger log)
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
+        ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request.");
+            log.LogInformation("Add device HTTP trigger function processed a request.");
 
-            string name = req.Query["name"];
+            var deviceInfo = new
+            {
+                DeviceId = Guid.NewGuid().ToString(),
+                PrimaryKey = GenerateSecureRandomKey(),
+                SecondaryKey = GenerateSecureRandomKey(),
+            };
+            RegisterDeviceInIoTHub(deviceInfo);
 
-            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
+            var response = new
+            {
+                deviceInfo.DeviceId,
+                deviceInfo.PrimaryKey,
+                deviceInfo.SecondaryKey,
+                IoTHubDeviceConnection = Environment.GetEnvironmentVariable("IoTHubConnectionDevice", EnvironmentVariableTarget.Process)
+            };
+            return new OkObjectResult(JsonConvert.SerializeObject(response));
+        }
 
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
+        private static void RegisterDeviceInIoTHub(dynamic deviceInfo)
+        {
+            string iotHubConnectionString = Environment.GetEnvironmentVariable("IoTHubConnection", EnvironmentVariableTarget.Process);
+            var registryManager = RegistryManager.CreateFromConnectionString(iotHubConnectionString);
 
-            return new OkObjectResult(responseMessage);
+            var device = new Device(deviceInfo.DeviceId)
+            {
+                Authentication = new AuthenticationMechanism
+                {
+                    Type = AuthenticationType.Sas,
+                    SymmetricKey = new SymmetricKey
+                    {
+                        PrimaryKey = deviceInfo.PrimaryKey,
+                        SecondaryKey = deviceInfo.SecondaryKey
+                    }
+                }
+            };
+
+            registryManager.AddDeviceAsync(device).Wait();
+
+            // Handle the registered device as needed
+            // For example, log the device information
+            Console.WriteLine($"Device registered: {deviceInfo.DeviceId}");
+        }
+
+        private static string GenerateSecureRandomKey()
+        {
+            byte[] keyBytes = new byte[32];
+
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(keyBytes);
+            }
+            return Convert.ToBase64String(keyBytes);
         }
     }
 }

@@ -1,0 +1,7 @@
+{
+  "user": {
+    "id": "string",
+    "devices": ["string"],
+    "email": "string"
+  }
+}
