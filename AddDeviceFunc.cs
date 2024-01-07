@@ -13,11 +13,11 @@ using Iotbcdg.Auth;
 
 namespace Iotbcdg.Functions
 {
-    public static class add_device
+    public static class AddDeviceFunc
     {
-        [FunctionName("add_device")]
+        [FunctionName("AddDeviceFunc")]
         public static async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "add-device")] HttpRequest req,
         ILogger log)
         {
             log.LogInformation("Add device HTTP trigger function processed a request.");

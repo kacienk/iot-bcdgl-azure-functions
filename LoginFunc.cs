@@ -16,11 +16,11 @@ using Microsoft.WindowsAzure.Storage.RetryPolicies;
 
 namespace Iotbcdg.Functions
 {
-    public static class login
+    public static class LoginFunc
     {
-        [FunctionName("login")]
+        [FunctionName("LoginFunc")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "login")] HttpRequest req,
             ILogger log)
         {
             log.LogInformation("Login HTTP trigger function processed a request.");

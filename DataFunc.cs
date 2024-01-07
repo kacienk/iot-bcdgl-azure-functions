@@ -17,11 +17,11 @@ using Microsoft.Azure.Cosmos;
 
 namespace Iotbcdg.Functions
 {
-    public static class data
+    public static class DataFunc
     {
-        [FunctionName("data")]
+        [FunctionName("DataFunc")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "data")] HttpRequest req,
             ILogger log)
         {
             log.LogInformation("Data HTTP trigger function processed a request.");

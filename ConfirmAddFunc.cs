@@ -8,28 +8,29 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Devices;
+using Microsoft.Azure.Cosmos;
+using System.Linq;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Iotbcdg.Model;
 using Iotbcdg.Auth;
-using Microsoft.Azure.Cosmos;
 using System.Web.Http;
 
 namespace Iotbcdg.Functions
 {
-    public static class pair
+    public static class ConfirmAddFunc
     {
-        [FunctionName("pair")]
+        [FunctionName("ConfirmAddFunc")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "confirm-add")] HttpRequest req,
             ILogger log)
         {
-            log.LogInformation("Pair HTTP trigger function processed a request.");
+            log.LogInformation("Confirm add HTTP trigger function processed a request.");
             AppUser user = await AuthHandler.CheckIfUserExists(req);
             if (user == null)
                 return new UnauthorizedObjectResult("User does not exist. Try login first.");
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             dynamic data = JsonConvert.DeserializeObject(requestBody);
-
             bool foundDevice = await CheckDeviceExistsAsync(log, data);
             if (!foundDevice)
                 return new NotFoundObjectResult("Device does not exist");
@@ -37,7 +38,7 @@ namespace Iotbcdg.Functions
             bool updatedUser = await AddDeviceToUserAsync(log, user, data.deviceId);
 
             return updatedUser
-                ? new OkObjectResult("successfully paired device")
+                ? new OkObjectResult("Added device")
                 : new InternalServerErrorResult();
         }
 
@@ -48,16 +49,16 @@ namespace Iotbcdg.Functions
 
             try
             {
-                var device = await registryManager.GetDeviceAsync(deviceData.id);
+                var device = await registryManager.GetDeviceAsync(deviceData.deviceId);
                 if (device != null)
                 {
-                    log.LogInformation($"Device with ID '{deviceData.id}' found in IoT Hub.");
+                    log.LogInformation($"Device with ID '{deviceData.deviceId}' found in IoT Hub.");
                     log.LogInformation($"Device details: {device}");
                     return true;
                 }
                 else
                 {
-                    log.LogInformation($"Device with ID '{deviceData.id}' not found in IoT Hub.");
+                    log.LogInformation($"Device with ID '{deviceData.deviceId}' not found in IoT Hub.");
                     return false;
                 }
             }
