@@ -7,6 +7,12 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Iotbcdg.Auth;
+using Microsoft.Extensions.Primitives;
+using Iotbcdg.Model;
+using Microsoft.Azure.Cosmos;
+using System.Runtime.ExceptionServices;
+using Microsoft.WindowsAzure.Storage.RetryPolicies;
 
 namespace Iotbcdg.Functions
 {
@@ -18,18 +24,17 @@ namespace Iotbcdg.Functions
             ILogger log)
         {
             log.LogInformation("Login HTTP trigger function processed a request.");
+            AppUser user = await AuthHandler.CreateUserIfNotExists(req, log);
 
-            string name = req.Query["name"];
-
-            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
-
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
-
-            return new OkObjectResult(responseMessage);
+            if (user != null)
+            {
+                log.LogInformation($"User logged in: User ID: {user.Id}");
+                return new OkObjectResult($"User logged in: User ID: {user.Id}");
+            }
+            else
+            {
+                return new UnauthorizedResult();
+            }
         }
     }
 }

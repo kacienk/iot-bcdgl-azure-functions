@@ -8,6 +8,8 @@ using Newtonsoft.Json;
 using Microsoft.Azure.Devices;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
+using Iotbcdg.Model;
+using Iotbcdg.Auth;
 
 namespace Iotbcdg.Functions
 {
@@ -18,7 +20,9 @@ namespace Iotbcdg.Functions
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req,
         ILogger log)
         {
-            log.LogInformation("Add device HTTP trigger function processed a request.");
+            AppUser user = await AuthHandler.CheckIfUserExists(req);
+            if (user == null)
+                return new UnauthorizedObjectResult("User does not exist. Try login first.");
 
             var deviceInfo = new
             {
@@ -57,9 +61,6 @@ namespace Iotbcdg.Functions
             };
 
             registryManager.AddDeviceAsync(device).Wait();
-
-            // Handle the registered device as needed
-            // For example, log the device information
             Console.WriteLine($"Device registered: {deviceInfo.DeviceId}");
         }
 
