@@ -37,6 +37,7 @@ namespace Iotbcdg.Functions
                 deviceInfo.DeviceId,
                 deviceInfo.PrimaryKey,
                 deviceInfo.SecondaryKey,
+                userId = user.Id,
                 IoTHubDeviceConnection = Environment.GetEnvironmentVariable("IoTHubConnectionDevice", EnvironmentVariableTarget.Process)
             };
             return new OkObjectResult(JsonConvert.SerializeObject(response));
