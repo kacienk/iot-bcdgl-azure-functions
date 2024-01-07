@@ -52,8 +52,7 @@ namespace Iotbcdg.Auth
             string containerId = Environment.GetEnvironmentVariable("UserContainerID", EnvironmentVariableTarget.Process);
 
             using var cosmosClient = new CosmosClient(cosmosConnection);
-            var database = cosmosClient.GetDatabase(databaseId);
-            var container = database.GetContainer(containerId);
+            var container = cosmosClient.GetContainer(databaseId, containerId);
             AppUser user = await AppUser.GetUserByIdAsync(container, userInfo.sub);
 
             return user;
@@ -75,8 +74,7 @@ namespace Iotbcdg.Auth
             string containerId = Environment.GetEnvironmentVariable("UserContainerID", EnvironmentVariableTarget.Process);
 
             using var cosmosClient = new CosmosClient(cosmosConnection);
-            var database = cosmosClient.GetDatabase(databaseId);
-            var container = database.GetContainer(containerId);
+            var container = cosmosClient.GetContainer(databaseId, containerId);
             AppUser user = await AppUser.GetUserByIdAsync(container, userInfo.sub);
 
             if (user != null)
@@ -102,8 +100,7 @@ namespace Iotbcdg.Auth
             string containerId = Environment.GetEnvironmentVariable("UserContainerID", EnvironmentVariableTarget.Process);
 
             using var cosmosClient = new CosmosClient(cosmosConnection);
-            var database = cosmosClient.GetDatabase(databaseId);
-            var container = database.GetContainer(containerId);
+            var container = cosmosClient.GetContainer(databaseId, containerId);
             AppUser user = await AppUser.GetUserByIdAsync(container, userInfo.sub);
 
             if (user != null)
