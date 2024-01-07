@@ -30,7 +30,13 @@ namespace Iotbcdg.Functions
                 PrimaryKey = GenerateSecureRandomKey(),
                 SecondaryKey = GenerateSecureRandomKey(),
             };
-            RegisterDeviceInIoTHub(deviceInfo);
+            Device device = await RegisterDeviceInIoTHub(deviceInfo);
+            if (device != null)
+                log.LogInformation($"Device registered: {device.Id}");
+            else
+            {
+                return new BadRequestResult();
+            }
 
             var response = new
             {
@@ -43,7 +49,7 @@ namespace Iotbcdg.Functions
             return new OkObjectResult(JsonConvert.SerializeObject(response));
         }
 
-        private static void RegisterDeviceInIoTHub(dynamic deviceInfo)
+        private static async Task<Device> RegisterDeviceInIoTHub(dynamic deviceInfo)
         {
             string iotHubConnectionString = Environment.GetEnvironmentVariable("IoTHubConnection", EnvironmentVariableTarget.Process);
             var registryManager = RegistryManager.CreateFromConnectionString(iotHubConnectionString);
@@ -61,8 +67,7 @@ namespace Iotbcdg.Functions
                 }
             };
 
-            registryManager.AddDeviceAsync(device).Wait();
-            Console.WriteLine($"Device registered: {deviceInfo.DeviceId}");
+            return await registryManager.AddDeviceAsync(device);
         }
 
         private static string GenerateSecureRandomKey()
