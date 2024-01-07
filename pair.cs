@@ -7,6 +7,11 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Microsoft.Azure.Devices;
+using Iotbcdg.Model;
+using Iotbcdg.Auth;
+using Microsoft.Azure.Cosmos;
+using System.Web.Http;
 
 namespace Iotbcdg.Functions
 {
@@ -14,22 +19,77 @@ namespace Iotbcdg.Functions
     {
         [FunctionName("pair")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
             ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request.");
-
-            string name = req.Query["name"];
+            log.LogInformation("Pair HTTP trigger function processed a request.");
+            AppUser user = await AuthHandler.CheckIfUserExists(req);
+            if (user == null)
+                return new UnauthorizedObjectResult("User does not exist. Try login first.");
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
 
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
+            bool foundDevice = await CheckDeviceExistsAsync(log, data);
+            if (!foundDevice)
+                return new NotFoundObjectResult("Device does not exist");
 
-            return new OkObjectResult(responseMessage);
+            bool updatedUser = await AddDeviceToUserAsync(log, user, data.deviceId);
+
+            return updatedUser
+                ? new OkObjectResult("successfully paired device")
+                : new InternalServerErrorResult();
+        }
+
+        static async Task<bool> CheckDeviceExistsAsync(ILogger log, dynamic deviceData)
+        {
+            string connectionString = Environment.GetEnvironmentVariable("IoTHubConnection", EnvironmentVariableTarget.Process);
+            var registryManager = RegistryManager.CreateFromConnectionString(connectionString);
+
+            try
+            {
+                var device = await registryManager.GetDeviceAsync(deviceData.id);
+                if (device != null)
+                {
+                    log.LogInformation($"Device with ID '{deviceData.id}' found in IoT Hub.");
+                    log.LogInformation($"Device details: {device}");
+                    return true;
+                }
+                else
+                {
+                    log.LogInformation($"Device with ID '{deviceData.id}' not found in IoT Hub.");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                log.LogInformation($"Error checking device existence: {ex.Message}");
+                return false;
+            }
+        }
+
+        static async Task<bool> AddDeviceToUserAsync(ILogger log, AppUser user, string deviceId)
+        {
+            string cosmosConnection = Environment.GetEnvironmentVariable("CosmosConnection", EnvironmentVariableTarget.Process);
+            string databaseId = Environment.GetEnvironmentVariable("DatabaseID", EnvironmentVariableTarget.Process);
+            string containerId = Environment.GetEnvironmentVariable("UserContainerID", EnvironmentVariableTarget.Process);
+
+            using var cosmosClient = new CosmosClient(cosmosConnection);
+            var container = cosmosClient.GetContainer(databaseId, containerId);
+
+            log.LogInformation($"Pairing device '{deviceId}' with user '{user.Id}' devices.");
+            user.Devices.Add(deviceId);
+            var response = await AppUser.UpdateUserAsync(container, user, log);
+            if (((int)response.StatusCode) >= 200 && ((int)response.StatusCode) < 300)
+            {
+                log.LogInformation("Device added successfully.");
+                return true;
+            }
+            else
+            {
+                log.LogInformation("Device could not be added.");
+                return false;
+            }
         }
     }
 }

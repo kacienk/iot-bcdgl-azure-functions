@@ -20,6 +20,7 @@ namespace Iotbcdg.Functions
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req,
         ILogger log)
         {
+            log.LogInformation("Add device HTTP trigger function processed a request.");
             AppUser user = await AuthHandler.CheckIfUserExists(req);
             if (user == null)
                 return new UnauthorizedObjectResult("User does not exist. Try login first.");

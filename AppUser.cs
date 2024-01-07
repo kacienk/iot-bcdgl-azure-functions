@@ -34,15 +34,16 @@ namespace Iotbcdg.Model
 
         }
 
-        public static async Task UpdateUserAsync(Container container, AppUser user)
+        public static async Task<ItemResponse<AppUser>> UpdateUserAsync(Container container, AppUser user)
         {
-            await container.UpsertItemAsync(user, new PartitionKey(user.Id));
+            return await container.UpsertItemAsync(user, new PartitionKey(user.Id));
         }
 
-        public static async Task UpdateUserAsync(Container container, AppUser user, ILogger log)
+        public static async Task<ItemResponse<AppUser>> UpdateUserAsync(Container container, AppUser user, ILogger log)
         {
             var response = await container.UpsertItemAsync(user, new PartitionKey(user.Id));
             log.LogInformation($"Update status: {response.StatusCode}");
+            return response;
         }
 
         public static async Task<ItemResponse<AppUser>> CreateUserAsync(Container container, dynamic userData)
