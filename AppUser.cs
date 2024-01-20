@@ -10,7 +10,7 @@ namespace Iotbcdg.Model
 {
     public class AppUser
     {
-        public string Id { get; set; }
+        public string UserId { get; set; }
         public List<string> Devices { get; set; } = new List<string>();
 
         public static async Task<AppUser> GetUserByIdAsync(Container container, string id)
@@ -36,12 +36,12 @@ namespace Iotbcdg.Model
 
         public static async Task<ItemResponse<AppUser>> UpdateUserAsync(Container container, AppUser user)
         {
-            return await container.UpsertItemAsync(user, new PartitionKey(user.Id));
+            return await container.UpsertItemAsync(user, new PartitionKey(user.UserId));
         }
 
         public static async Task<ItemResponse<AppUser>> UpdateUserAsync(Container container, AppUser user, ILogger log)
         {
-            var response = await container.UpsertItemAsync(user, new PartitionKey(user.Id));
+            var response = await container.UpsertItemAsync(user, new PartitionKey(user.UserId));
             log.LogInformation($"Update status: {response.StatusCode}");
             return response;
         }
@@ -52,26 +52,26 @@ namespace Iotbcdg.Model
 
             var newUser = new AppUser
             {
-                Id = sub,
+                UserId = sub,
                 Devices = new List<string>()
             };
 
-            return await container.CreateItemAsync(newUser, new PartitionKey(newUser.Id));
+            return await container.CreateItemAsync(newUser, new PartitionKey(newUser.UserId));
         }
 
-        public static async Task<ItemResponse<AppUser>> CreateUserAsync(Container container, dynamic userData, ILogger log)
+        public static async Task<ItemResponse<AppUser>> CreateUserAsync(Container container, GoogleUserData userData, ILogger log)
         {
-            string sub = userData.sub;
-
             var newUser = new AppUser
             {
-                Id = sub,
+                UserId = userData.sub,
                 Devices = new List<string>()
             };
+            log.LogInformation(newUser.UserId);
+            log.LogInformation(newUser.Devices.ToString());
 
-            var response = await container.CreateItemAsync(newUser, new PartitionKey(newUser.Id));
+            var response = await container.CreateItemAsync(newUser);
             if (((int)response.StatusCode) >= 200 && ((int)response.StatusCode) < 300)
-                log.LogInformation($"User with ID '{newUser.Id}' registered successfully in Cosmos DB.");
+                log.LogInformation($"User with ID '{newUser.UserId}' registered successfully in Cosmos DB.");
 
             return response;
         }

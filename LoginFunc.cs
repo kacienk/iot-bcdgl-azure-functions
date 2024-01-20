@@ -23,13 +23,13 @@ namespace Iotbcdg.Functions
             [HttpTrigger(AuthorizationLevel.Function, "get", Route = "login")] HttpRequest req,
             ILogger log)
         {
-            log.LogInformation("Login HTTP trigger function processed a request.");
+            log.LogInformation("Login aaaaaaaa HTTP trigger function processed a request.");
             AppUser user = await AuthHandler.CreateUserIfNotExists(req, log);
 
             if (user != null)
             {
-                log.LogInformation($"User logged in: User ID: {user.Id}");
-                return new OkObjectResult($"User logged in: User ID: {user.Id}");
+                log.LogInformation($"User logged in: User ID: {user.UserId}");
+                return new OkObjectResult($"User logged in: User ID: {user.UserId}");
             }
             else
             {

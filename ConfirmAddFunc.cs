@@ -78,7 +78,7 @@ namespace Iotbcdg.Functions
             using var cosmosClient = new CosmosClient(cosmosConnection);
             var container = cosmosClient.GetContainer(databaseId, containerId);
 
-            log.LogInformation($"Pairing device '{deviceId}' with user '{user.Id}' devices.");
+            log.LogInformation($"Pairing device '{deviceId}' with user '{user.UserId}' devices.");
             user.Devices.Add(deviceId);
             var response = await AppUser.UpdateUserAsync(container, user, log);
             if (((int)response.StatusCode) >= 200 && ((int)response.StatusCode) < 300)
