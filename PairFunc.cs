@@ -30,7 +30,7 @@ namespace Iotbcdg.Functions
             PairData pairData;
             try
             {
-                pairData = await ProcessRequestBodyAsync(req);
+                pairData = await ProcessRequestBodyAsync(log, req);
             }
             catch (JsonSerializationException)
             {
@@ -55,10 +55,11 @@ namespace Iotbcdg.Functions
             }
         }
 
-        static async Task<PairData> ProcessRequestBodyAsync(HttpRequest req)
+        static async Task<PairData> ProcessRequestBodyAsync(ILogger log, HttpRequest req)
         {
             string encryptionKey = Environment.GetEnvironmentVariable("EncryptionSymetricKey", EnvironmentVariableTarget.Process);
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            log.LogInformation(requestBody);
             string decryptedBody = DecryptData(encryptionKey, requestBody);
 
             return JsonConvert.DeserializeObject<PairData>(decryptedBody);
@@ -71,7 +72,13 @@ namespace Iotbcdg.Functions
             if (user == null)
                 return new UnauthorizedObjectResult("User does not exist. Try login first.");
 
-            Container container = GetContainer("CosmosConnection", "DatabaseID", "PairQueueContainerID");
+            string cosmosConnectionEnvVar = Environment.GetEnvironmentVariable("CosmosConnection", EnvironmentVariableTarget.Process);
+            string databaseIdEnvVar = Environment.GetEnvironmentVariable("DatabaseID", EnvironmentVariableTarget.Process);
+            string containerIdEnvVar = Environment.GetEnvironmentVariable("PairQueueContainerID", EnvironmentVariableTarget.Process);
+
+            using var cosmosClient = new CosmosClient(cosmosConnectionEnvVar);
+            Container container = cosmosClient.GetContainer(databaseIdEnvVar, containerIdEnvVar);
+
             PairData correspondingPairData = new()
             {
                 DeviceId = pairData.DeviceId,
@@ -96,7 +103,14 @@ namespace Iotbcdg.Functions
         static async Task<IActionResult> ProcessDeviceRequest(ILogger log, PairData pairData)
         {
             log.LogInformation("Processing device pair request.");
-            Container container = GetContainer("CosmosConnection", "DatabaseID", "PairQueueContainerID");
+
+            string cosmosConnectionEnvVar = Environment.GetEnvironmentVariable("CosmosConnection", EnvironmentVariableTarget.Process);
+            string databaseIdEnvVar = Environment.GetEnvironmentVariable("DatabaseID", EnvironmentVariableTarget.Process);
+            string containerIdEnvVar = Environment.GetEnvironmentVariable("PairQueueContainerID", EnvironmentVariableTarget.Process);
+
+            using var cosmosClient = new CosmosClient(cosmosConnectionEnvVar);
+            Container container = cosmosClient.GetContainer(databaseIdEnvVar, containerIdEnvVar);
+
             PairData correspondingPairData = new()
             {
                 DeviceId = pairData.DeviceId,
@@ -107,7 +121,9 @@ namespace Iotbcdg.Functions
             if (correspondingPairDbEntry != null && correspondingPairDbEntry.UserId != null)
             {
                 log.LogInformation("Found corresponding pair db entry.");
-                Container usersContainer = GetContainer("CosmosConnection", "DatabaseID", "UserContainerID");
+                string userContainerIdEnvVar = Environment.GetEnvironmentVariable("UserContainerID", EnvironmentVariableTarget.Process);
+                Container usersContainer = cosmosClient.GetContainer(databaseIdEnvVar, userContainerIdEnvVar);
+
                 var user = await AppUser.GetUserByIdAsync(usersContainer, correspondingPairDbEntry.UserId);
                 if (user == null)
                 {
@@ -130,13 +146,14 @@ namespace Iotbcdg.Functions
         {
             var dbEntry = new PairDbEntry
             {
+                PairQueueId = Guid.NewGuid().ToString(),
                 RequestType = pairData.RequestType,
                 DeviceId = pairData.DeviceId,
                 Timestamp = DateTime.Now,
                 UserId = userId
             };
 
-            return await container.CreateItemAsync(dbEntry, new PartitionKey(dbEntry.Timestamp.ToString()));
+            return await container.CreateItemAsync(dbEntry);
         }
 
         static async Task<PairDbEntry> FindPairDbEntry(Container container, PairData pairData)
@@ -181,7 +198,12 @@ namespace Iotbcdg.Functions
 
         static async Task<bool> AddDeviceToUserAsync(ILogger log, AppUser user, string deviceId)
         {
-            var container = GetContainer("CosmosConnection", "DatabaseID", "UserContainerID");
+            string cosmosConnectionEnvVar = Environment.GetEnvironmentVariable("CosmosConnection", EnvironmentVariableTarget.Process);
+            string databaseIdEnvVar = Environment.GetEnvironmentVariable("DatabaseID", EnvironmentVariableTarget.Process);
+            string containerIdEnvVar = Environment.GetEnvironmentVariable("PairQueueContainerID", EnvironmentVariableTarget.Process);
+
+            using var cosmosClient = new CosmosClient(cosmosConnectionEnvVar);
+            Container container = cosmosClient.GetContainer(databaseIdEnvVar, containerIdEnvVar);
 
             log.LogInformation($"Pairing device '{deviceId}' with user '{user.UserId}' devices.");
             user.Devices.Add(deviceId);
@@ -200,17 +222,22 @@ namespace Iotbcdg.Functions
 
         static string DecryptData(string key, string encryptedString)
         {
-            byte[] iv = Convert.FromBase64String(encryptedString[..16]);
-            byte[] buffer = Convert.FromBase64String(encryptedString[16..]);
+            byte[] encryptedBytes = Convert.FromBase64String(encryptedString);
 
             using Aes aes = Aes.Create();
-            aes.Key = Encoding.UTF8.GetBytes(key);
+            aes.Key = Convert.FromBase64String(key);
+
+            byte[] iv = new byte[16];
+            Buffer.BlockCopy(encryptedBytes, 0, iv, 0, iv.Length);
+
             aes.IV = iv;
+            aes.Padding = PaddingMode.PKCS7;
             ICryptoTransform decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
 
-            using MemoryStream memoryStream = new(buffer);
+            using MemoryStream memoryStream = new(encryptedBytes, iv.Length, encryptedBytes.Length - iv.Length);
             using CryptoStream cryptoStream = new(memoryStream, decryptor, CryptoStreamMode.Read);
             using StreamReader streamReader = new(cryptoStream);
+
             return streamReader.ReadToEnd();
         }
 
