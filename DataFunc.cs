@@ -31,17 +31,18 @@ namespace Iotbcdg.Functions
 
             if (!user.Devices.Contains(id))
             {
-                log.LogWarning("User tried to get access to either not existing or not paired device.");
-                return new UnauthorizedObjectResult("Either device does not exist or user is not paired with device");
+                log.LogWarning($"User '{user.UserId}' tried to get access to either not existing or not paired device '{id}'.");
+                return new UnauthorizedObjectResult($"user is not paired with device {id}");
             }
 
             List<DeviceData> deviceData = await GetDeviceDataAsync(id);
-            log.LogInformation($"Logs count: {deviceData.Count.ToString()}");
-            foreach (var record in deviceData)
-            {
-                log.LogInformation(JsonConvert.SerializeObject(record));
-            }
-            return new OkObjectResult(deviceData);
+            log.LogInformation($"Logs count: {deviceData.Count}");
+            string serializedData = JsonConvert.SerializeObject(deviceData);
+            log.LogInformation(serializedData);
+
+            string encryptionKey = Environment.GetEnvironmentVariable("EncryptionSymetricKey", EnvironmentVariableTarget.Process);
+            string encryptedData = Encryption.EncryptData(encryptionKey, serializedData);
+            return new OkObjectResult(encryptedData);
         }
 
         static async Task<List<DeviceData>> GetDeviceDataAsync(string deviceId)

@@ -25,7 +25,7 @@ class Encryption
         return streamReader.ReadToEnd();
     }
 
-    static string EncryptData(string key, string plainText)
+    public static string EncryptData(string key, string plainText)
     {
         using Aes aes = Aes.Create();
         aes.Key = Convert.FromBase64String(key);

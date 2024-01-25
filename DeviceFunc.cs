@@ -24,7 +24,10 @@ namespace Iotbcdg.Functions
             if (user == null)
                 return new UnauthorizedObjectResult("User does not exist. Try login first.");
 
-            return new OkObjectResult(user.Devices);
+            string serializedData = JsonConvert.SerializeObject(user.Devices);
+            string encryptionKey = Environment.GetEnvironmentVariable("EncryptionSymetricKey", EnvironmentVariableTarget.Process);
+            string encryptedData = Encryption.EncryptData(encryptionKey, serializedData);
+            return new OkObjectResult(encryptedData);
         }
     }
 }
