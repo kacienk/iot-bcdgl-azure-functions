@@ -7,28 +7,28 @@ using Newtonsoft.Json;
 
 namespace Iotbcdg.Model
 {
-  public class DataDbEntry
-  {
-    public string Body { get; set; }
-    public int _ts { get; set; }
-
-    public static async Task<List<DataDbEntry>> GetDataDbEntryAsync(Container container, string deviceId)
+    public class DataDbEntry
     {
-      var query = new QueryDefinition($"SELECT * FROM c WHERE c.deviceId = @deviceId")
-          .WithParameter("@deviceId", deviceId);
+        public string Body { get; set; }
+        public int _ts { get; set; }
 
-      List<DataDbEntry> deviceData = new();
-
-      using var iterator = container.GetItemQueryIterator<DataDbEntry>(query);
-      while (iterator.HasMoreResults)
-      {
-        foreach (var record in await iterator.ReadNextAsync())
+        public static async Task<List<DataDbEntry>> GetDataDbEntryAsync(Container container, string deviceId)
         {
-          deviceData.Add(record);
-        }
-      }
+            var query = new QueryDefinition($"SELECT * FROM c WHERE c.deviceId = @deviceId")
+                .WithParameter("@deviceId", deviceId);
 
-      return deviceData;
+            List<DataDbEntry> deviceData = new();
+
+            using var iterator = container.GetItemQueryIterator<DataDbEntry>(query);
+            while (iterator.HasMoreResults)
+            {
+                foreach (var record in await iterator.ReadNextAsync())
+                {
+                    deviceData.Add(record);
+                }
+            }
+
+            return deviceData;
+        }
     }
-  }
 }
