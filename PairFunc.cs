@@ -61,7 +61,7 @@ namespace Iotbcdg.Functions
             string encryptionKey = Environment.GetEnvironmentVariable("EncryptionSymetricKey", EnvironmentVariableTarget.Process);
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             log.LogInformation(requestBody);
-            string decryptedBody = DecryptData(encryptionKey, requestBody);
+            string decryptedBody = Encryption.DecryptData(encryptionKey, requestBody);
 
             return JsonConvert.DeserializeObject<PairData>(decryptedBody);
         }
@@ -220,27 +220,6 @@ namespace Iotbcdg.Functions
                 log.LogInformation("Device could not be added.");
                 return false;
             }
-        }
-
-        static string DecryptData(string key, string encryptedString)
-        {
-            byte[] encryptedBytes = Convert.FromBase64String(encryptedString);
-
-            using Aes aes = Aes.Create();
-            aes.Key = Convert.FromBase64String(key);
-
-            byte[] iv = new byte[16];
-            Buffer.BlockCopy(encryptedBytes, 0, iv, 0, iv.Length);
-
-            aes.IV = iv;
-            aes.Padding = PaddingMode.PKCS7;
-            ICryptoTransform decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-
-            using MemoryStream memoryStream = new(encryptedBytes, iv.Length, encryptedBytes.Length - iv.Length);
-            using CryptoStream cryptoStream = new(memoryStream, decryptor, CryptoStreamMode.Read);
-            using StreamReader streamReader = new(cryptoStream);
-
-            return streamReader.ReadToEnd();
         }
 
         static Container GetContainer(string cosmosConnection, string dbId, string containerId)
