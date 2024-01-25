@@ -54,7 +54,8 @@ namespace Iotbcdg.Functions
             using var cosmosClient = new CosmosClient(cosmosConnection);
             var container = cosmosClient.GetContainer(databaseId, containerId);
 
-            return await DeviceData.GetDeviceDataAsync(container, deviceId);
+            List<DataDbEntry> entries = await DataDbEntry.GetDataDbEntryAsync(container, deviceId);
+            return DeviceData.ParseDataDbEntreis(entries);
         }
     }
 }

@@ -13,24 +13,22 @@ namespace Iotbcdg.Model
         public int Timestamp { get; set; }
         public double Value { get; set; }
 
-        public static async Task<List<DeviceData>> GetDeviceDataAsync(Container container, string deviceId)
+        public static List<DeviceData> ParseDataDbEntreis(List<DataDbEntry> dbEntries)
         {
-            var query = new QueryDefinition($"SELECT * FROM c WHERE c.deviceId = @deviceId")
-                .WithParameter("@deviceId", deviceId);
-
             List<DeviceData> deviceData = new();
 
-            using var iterator = container.GetItemQueryIterator<string>(query);
-            while (iterator.HasMoreResults)
+            foreach (var record in dbEntries)
             {
-                foreach (var record in await iterator.ReadNextAsync())
+                byte[] decodedBytes = Convert.FromBase64String(record.Body);
+                string decodedString = Encoding.UTF8.GetString(decodedBytes);
+                DeviceDataBody deviceDataBody = JsonConvert.DeserializeObject<DeviceDataBody>(decodedString);
+                DeviceData newDeviceData = new()
                 {
-                    byte[] decodedBytes = Convert.FromBase64String(record);
-                    string decodedString = Encoding.UTF8.GetString(decodedBytes);
-                    DeviceData data = JsonConvert.DeserializeObject<DeviceData>(decodedString);
-
-                    deviceData.Add(data);
-                }
+                    DeviceId = deviceDataBody.DeviceId,
+                    Value = deviceDataBody.Value,
+                    Timestamp = record._ts
+                };
+                deviceData.Add(newDeviceData);
             }
 
             return deviceData;
