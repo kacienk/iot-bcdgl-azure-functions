@@ -90,10 +90,7 @@ namespace Iotbcdg.Functions
             if (correspondingPairDbEntry != null && correspondingPairDbEntry.DeviceId != null)
             {
                 log.LogInformation("Found corresponding pair db entry.");
-                bool udateResult = await AddDeviceToUserAsync(log, user, pairData.DeviceId);
-                return udateResult
-                    ? new OkObjectResult("device properly added to user")
-                    : new BadRequestObjectResult("could not add device");
+                return await AddDeviceToUserAsync(log, user, pairData.DeviceId);
             }
 
             log.LogInformation($"Created pairing request for user '{user.UserId}' with.");
@@ -132,10 +129,7 @@ namespace Iotbcdg.Functions
                     return new NotFoundObjectResult("user in pair db entry not found");
                 }
 
-                bool udateResult = await AddDeviceToUserAsync(log, user, pairData.DeviceId);
-                return udateResult
-                    ? new OkObjectResult("device properly added to user")
-                    : new BadRequestObjectResult("could not add device");
+                return await AddDeviceToUserAsync(log, user, pairData.DeviceId);
             }
 
             log.LogInformation($"Created pairing request for device '{pairData.DeviceId}'.");
@@ -198,7 +192,7 @@ namespace Iotbcdg.Functions
             }
         }
 
-        static async Task<bool> AddDeviceToUserAsync(ILogger log, AppUser user, string deviceId)
+        static async Task<IActionResult> AddDeviceToUserAsync(ILogger log, AppUser user, string deviceId)
         {
             string cosmosConnectionEnvVar = Environment.GetEnvironmentVariable("CosmosConnection", EnvironmentVariableTarget.Process);
             string databaseIdEnvVar = Environment.GetEnvironmentVariable("DatabaseID", EnvironmentVariableTarget.Process);
@@ -208,17 +202,23 @@ namespace Iotbcdg.Functions
             Container container = cosmosClient.GetContainer(databaseIdEnvVar, containerIdEnvVar);
 
             log.LogInformation($"Pairing device '{deviceId}' with user '{user.UserId}' devices.");
+            if (user.Devices.Contains(deviceId))
+            {
+                log.LogError($"Device '{deviceId}' already paired with user '{user.UserId}' devices.");
+                return new ConflictObjectResult($"user '{user.UserId}' already paired with device '{deviceId}'");
+            }
             user.Devices.Add(deviceId);
+
             var response = await AppUser.UpdateUserAsync(container, user, log);
             if (((int)response.StatusCode) >= 200 && ((int)response.StatusCode) < 300)
             {
                 log.LogInformation("Device added successfully.");
-                return true;
+                return new OkObjectResult("device properly added to user");
             }
             else
             {
                 log.LogInformation("Device could not be added.");
-                return false;
+                return new BadRequestObjectResult("could not add device");
             }
         }
 
