@@ -7,11 +7,12 @@ namespace Iotbcdg.Model
     public class DeviceData
     {
         public string Id { get; set; }
+        public int _ts { get; set; }
         public double Value { get; set; }
 
         public static async Task<List<DeviceData>> GetDeviceDataAsync(Container container, string deviceId)
         {
-            var query = new QueryDefinition($"SELECT * FROM c WHERE c.id = @deviceId")
+            var query = new QueryDefinition($"SELECT * FROM c WHERE c.deviceId = @deviceId")
                 .WithParameter("@deviceId", deviceId);
 
             List<DeviceData> deviceData = new();

@@ -21,7 +21,7 @@ namespace Iotbcdg.Functions
     {
         [FunctionName("DataFunc")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "data")] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "data/{id}")] HttpRequest req, string id,
             ILogger log)
         {
             log.LogInformation("Data HTTP trigger function processed a request.");
@@ -29,21 +29,18 @@ namespace Iotbcdg.Functions
             if (user == null)
                 return new UnauthorizedObjectResult("User does not exist. Try login first.");
 
-            Dictionary<string, string> queryParams = new(req.GetQueryParameterDictionary());
-            if (!queryParams.ContainsKey("deviceId"))
-            {
-                log.LogWarning("Query with no deviceId received.");
-                return new BadRequestObjectResult("No deviceId in query params");
-            }
-
-            string deviceId = queryParams["deviceId"];
-            if (!user.Devices.Contains(deviceId))
+            if (!user.Devices.Contains(id))
             {
                 log.LogWarning("User tried to get access to either not existing or not paired device.");
                 return new UnauthorizedObjectResult("Either device does not exist or user is not paired with device");
             }
 
-            List<DeviceData> deviceData = await GetDeviceDataAsync(deviceId);
+            List<DeviceData> deviceData = await GetDeviceDataAsync(id);
+            log.LogInformation($"Logs count: {deviceData.Count.ToString()}");
+            foreach (var record in deviceData)
+            {
+                log.LogInformation(JsonConvert.SerializeObject(record));
+            }
             return new OkObjectResult(deviceData);
         }
 
@@ -51,7 +48,7 @@ namespace Iotbcdg.Functions
         {
             string cosmosConnection = Environment.GetEnvironmentVariable("CosmosConnection", EnvironmentVariableTarget.Process);
             string databaseId = Environment.GetEnvironmentVariable("DatabaseID", EnvironmentVariableTarget.Process);
-            string containerId = Environment.GetEnvironmentVariable("UserContainerID", EnvironmentVariableTarget.Process);
+            string containerId = Environment.GetEnvironmentVariable("DataContainerID", EnvironmentVariableTarget.Process);
 
             using var cosmosClient = new CosmosClient(cosmosConnection);
             var container = cosmosClient.GetContainer(databaseId, containerId);

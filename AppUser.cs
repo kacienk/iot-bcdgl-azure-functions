@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,17 +6,20 @@ using System.Threading.Tasks;
 using Iotbcdg.Auth;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace Iotbcdg.Model
 {
     public class AppUser
     {
+        [JsonProperty("id")]
+        public string Id { get; set; }
         public string UserId { get; set; }
         public List<string> Devices { get; set; } = new List<string>();
 
         public static async Task<AppUser> GetUserByIdAsync(Container container, string id)
         {
-            var query = new QueryDefinition($"SELECT * FROM c WHERE c.id = @userId")
+            var query = new QueryDefinition($"SELECT * FROM c WHERE c.UserId = @userId")
                 .WithParameter("@userId", id);
 
             var iterator = container.GetItemQueryIterator<AppUser>(query);
@@ -52,6 +56,7 @@ namespace Iotbcdg.Model
 
             var newUser = new AppUser
             {
+                Id = Guid.NewGuid().ToString(),
                 UserId = sub,
                 Devices = new List<string>()
             };
@@ -63,6 +68,7 @@ namespace Iotbcdg.Model
         {
             var newUser = new AppUser
             {
+                Id = Guid.NewGuid().ToString(),
                 UserId = userData.sub,
                 Devices = new List<string>()
             };

@@ -16,6 +16,7 @@ using System.Web.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Linq;
+using System.Data.Common;
 
 namespace Iotbcdg.Functions
 {
@@ -146,6 +147,7 @@ namespace Iotbcdg.Functions
         {
             var dbEntry = new PairDbEntry
             {
+                Id = Guid.NewGuid().ToString(),
                 PairQueueId = Guid.NewGuid().ToString(),
                 RequestType = pairData.RequestType,
                 DeviceId = pairData.DeviceId,
@@ -200,7 +202,7 @@ namespace Iotbcdg.Functions
         {
             string cosmosConnectionEnvVar = Environment.GetEnvironmentVariable("CosmosConnection", EnvironmentVariableTarget.Process);
             string databaseIdEnvVar = Environment.GetEnvironmentVariable("DatabaseID", EnvironmentVariableTarget.Process);
-            string containerIdEnvVar = Environment.GetEnvironmentVariable("PairQueueContainerID", EnvironmentVariableTarget.Process);
+            string containerIdEnvVar = Environment.GetEnvironmentVariable("UserContainerID", EnvironmentVariableTarget.Process);
 
             using var cosmosClient = new CosmosClient(cosmosConnectionEnvVar);
             Container container = cosmosClient.GetContainer(databaseIdEnvVar, containerIdEnvVar);
