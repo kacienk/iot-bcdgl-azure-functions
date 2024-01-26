@@ -86,7 +86,6 @@ namespace Iotbcdg.Auth
 
         public static async Task<AppUser> CreateUserIfNotExists(HttpRequest req, ILogger log)
         {
-            log.LogInformation("aaaaaaaaa");
             if (!req.Headers.TryGetValue("Authorization", out StringValues authHeader))
                 return null;
             log.LogInformation(authHeader);
@@ -103,11 +102,9 @@ namespace Iotbcdg.Auth
             string cosmosConnection = Environment.GetEnvironmentVariable("CosmosConnection", EnvironmentVariableTarget.Process);
             string databaseId = Environment.GetEnvironmentVariable("DatabaseID", EnvironmentVariableTarget.Process);
             string containerId = Environment.GetEnvironmentVariable("UserContainerID", EnvironmentVariableTarget.Process);
-            log.LogInformation("aaaaaaa");
             using var cosmosClient = new CosmosClient(cosmosConnection);
             var container = cosmosClient.GetContainer(databaseId, containerId);
             AppUser user = await AppUser.GetUserByIdAsync(container, userInfo.sub);
-            log.LogInformation("bbbbb");
             if (user != null)
                 return user;
 
