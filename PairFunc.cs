@@ -221,15 +221,5 @@ namespace Iotbcdg.Functions
                 return new BadRequestObjectResult("could not add device");
             }
         }
-
-        static Container GetContainer(string cosmosConnection, string dbId, string containerId)
-        {
-            string cosmosConnectionEnvVar = Environment.GetEnvironmentVariable(cosmosConnection, EnvironmentVariableTarget.Process);
-            string databaseIdEnvVar = Environment.GetEnvironmentVariable(dbId, EnvironmentVariableTarget.Process);
-            string containerIdEnvVar = Environment.GetEnvironmentVariable(containerId, EnvironmentVariableTarget.Process);
-
-            using var cosmosClient = new CosmosClient(cosmosConnectionEnvVar);
-            return cosmosClient.GetContainer(databaseIdEnvVar, containerIdEnvVar);
-        }
     }
 }
