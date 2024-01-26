@@ -26,7 +26,7 @@ namespace Iotbcdg.Functions
 
             string serializedData = JsonConvert.SerializeObject(user.Devices);
             string encryptionKey = Environment.GetEnvironmentVariable("EncryptionSymetricKey", EnvironmentVariableTarget.Process);
-            string encryptedData = Encryption.EncryptData(encryptionKey, serializedData);
+            string encryptedData = EncryptionHandler.EncryptData(encryptionKey, serializedData);
             return new OkObjectResult(encryptedData);
         }
     }

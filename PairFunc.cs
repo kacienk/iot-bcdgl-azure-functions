@@ -61,7 +61,7 @@ namespace Iotbcdg.Functions
             string encryptionKey = Environment.GetEnvironmentVariable("EncryptionSymetricKey", EnvironmentVariableTarget.Process);
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             log.LogInformation(requestBody);
-            string decryptedBody = Encryption.DecryptData(encryptionKey, requestBody);
+            string decryptedBody = EncryptionHandler.DecryptData(encryptionKey, requestBody);
 
             return JsonConvert.DeserializeObject<PairData>(decryptedBody);
         }

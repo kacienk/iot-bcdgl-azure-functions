@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 
-class Encryption
+class EncryptionHandler
 {
     public static string DecryptData(string key, string encryptedString)
     {
